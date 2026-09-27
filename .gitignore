@@ -1,0 +1,43 @@
+# Local environments and dependencies
+.conda/
+.venv/
+venv/
+node_modules/
+.pnpm-store/
+# Secrets and local state
+.env
+.env.*
+!.env.example
+!.env.local.example
+!.env.test.example
+*.pem
+*.key
+*.db
+*.db-*
+*.sqlite*
+*.log
+logs/
+.run/
+# Build output and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage*
+htmlcov/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+.DS_Store
+# Native engine output
+unreal/**/Binaries/
+unreal/**/Intermediate/
+unreal/**/Saved/
+unreal/**/DerivedDataCache/
+unreal/**/*.xcworkspace/
+unreal/**/*.xcodeproj/
+# Generated authoring reviews
+art/**/review/renders/
+*.blend1

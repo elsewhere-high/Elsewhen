@@ -1,0 +1,15 @@
+.git
+**/.env
+**/.env.local
+**/.conda
+**/.venv
+**/node_modules
+**/.next
+**/__pycache__
+**/.pytest_cache
+**/*.db
+**/*.log
+work
+.run
+unreal
+art

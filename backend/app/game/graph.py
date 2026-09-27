@@ -1,0 +1,103 @@
+"""Graph wiring. Plan §5.
+
+assign_roles -> start_night -> [werewolf_negotiation]* -> resolve_wolf_plan
+  -> night_doctor -> night_seer
+  -> resolve_night -> check_win -> END | start_day
+start_day -> [day_discussion]* -> start_vote -> [voting]* -> resolve_vote
+  -> check_win -> END | start_night (next round)
+
+`[x]*` = conditional self-edge, one seat's turn per execution (see nodes.py
+docstring for why this can't be a plain Python loop).
+"""
+
+from typing import TypedDict
+
+from langgraph.graph import END, START, StateGraph
+
+from app.game import nodes, missing_villager
+from app.game.rules import werewolf_turn_limit
+from app.models import GameState
+
+
+class GraphState(TypedDict):
+    game: GameState
+
+
+def _route_werewolf_negotiation(state: GraphState) -> str:
+    game = state["game"]
+    return (
+        "werewolf_negotiation"
+        if game.wolf_index < werewolf_turn_limit(game)
+        else "resolve_wolf_plan"
+    )
+
+
+def _route_day_discussion(state: GraphState) -> str:
+    game = state["game"]
+    return "day_discussion" if game.day_index < len(game.alive_players()) * game.options.discussion_rounds else "start_vote"
+
+
+def _route_voting(state: GraphState) -> str:
+    game = state["game"]
+    return "voting" if game.vote_index < len(game.alive_players()) else "resolve_vote"
+
+
+def _route_after_night_check(state: GraphState) -> str:
+    return END if state["game"].winner else "start_day"
+
+
+def _route_after_vote_check(state: GraphState) -> str:
+    return END if state["game"].winner else "start_night"
+
+
+def build_graph(checkpointer):
+    builder = StateGraph(GraphState)
+
+    builder.add_node("assign_roles", nodes.assign_roles)
+    builder.add_node("start_night", nodes.start_night)
+    builder.add_node("werewolf_negotiation", nodes.werewolf_negotiation)
+    builder.add_node("resolve_wolf_plan", nodes.resolve_wolf_plan)
+    builder.add_node("night_doctor", nodes.night_doctor)
+    builder.add_node("night_seer", nodes.night_seer)
+    builder.add_node("resolve_night", nodes.resolve_night)
+    builder.add_node("hunter_retaliation_night", nodes.hunter_retaliation)
+    builder.add_node("check_win_night", nodes.check_win)
+    builder.add_node("start_day", nodes.start_day)
+    builder.add_node("select_village_event", nodes.select_village_event)
+    builder.add_node("day_discussion", nodes.day_discussion)
+    builder.add_node("start_vote", nodes.start_vote)
+    builder.add_node("voting", nodes.voting)
+    builder.add_node("resolve_vote", nodes.resolve_vote)
+    builder.add_node("hunter_retaliation_vote", nodes.hunter_retaliation)
+    builder.add_node("check_win_vote", nodes.check_win)
+
+    builder.add_edge(START, "assign_roles")
+    builder.add_node("open_case", missing_villager.open_case)
+    builder.add_node("investigate", missing_villager.investigate)
+    builder.add_node("case_consequence", missing_villager.consequence)
+    builder.add_conditional_edges("assign_roles", lambda s: "open_case" if s["game"].options.scenario == "missing-villager" else "start_night", ["open_case", "start_night"])
+    builder.add_edge("open_case", "investigate")
+    builder.add_conditional_edges("investigate", lambda s: "start_day" if s["game"].missing_villager.stage == "complete" else "investigate", ["start_day", "investigate"])
+    builder.add_edge("start_night", "werewolf_negotiation")
+    builder.add_conditional_edges(
+        "werewolf_negotiation",
+        _route_werewolf_negotiation,
+        ["werewolf_negotiation", "resolve_wolf_plan"],
+    )
+    builder.add_edge("resolve_wolf_plan", "night_doctor")
+    builder.add_edge("night_doctor", "night_seer")
+    builder.add_edge("night_seer", "resolve_night")
+    builder.add_edge("resolve_night", "hunter_retaliation_night")
+    builder.add_edge("hunter_retaliation_night", "check_win_night")
+    builder.add_conditional_edges("check_win_night", _route_after_night_check, [END, "start_day"])
+    builder.add_edge("start_day", "select_village_event")
+    builder.add_edge("select_village_event", "day_discussion")
+    builder.add_conditional_edges("day_discussion", _route_day_discussion, ["day_discussion", "start_vote"])
+    builder.add_edge("start_vote", "voting")
+    builder.add_conditional_edges("voting", _route_voting, ["voting", "resolve_vote"])
+    builder.add_edge("resolve_vote", "case_consequence")
+    builder.add_edge("case_consequence", "hunter_retaliation_vote")
+    builder.add_edge("hunter_retaliation_vote", "check_win_vote")
+    builder.add_conditional_edges("check_win_vote", _route_after_vote_check, [END, "start_night"])
+
+    return builder.compile(checkpointer=checkpointer)

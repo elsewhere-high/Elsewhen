@@ -1,0 +1,180 @@
+"use client";
+
+import { MicrophoneInput } from "./MicrophoneInput";
+import { usePreferences, type Language } from "./Preferences";
+import type { GameAccessCredentials } from "@/lib/types";
+import { useState } from "react";
+import { MissingVillagerInvestigation } from "@/components/MissingVillagerInvestigation";
+import type { AwaitingInput } from "@/lib/types";
+
+export function Controls({
+  sessionId, access, language, onRecording,
+  awaiting,
+  paused,
+  onSubmit,
+  onContinue,
+  submitting,
+  promptKey,
+}: {
+  sessionId: string; access?: GameAccessCredentials; language: Language; onRecording: (value:boolean)=>void;
+  awaiting: AwaitingInput | null;
+  paused: boolean;
+  onSubmit: (value: Record<string, unknown>) => Promise<boolean>;
+  onContinue: () => void;
+  submitting: boolean;
+  promptKey: string | null;
+}) {
+  const { t } = usePreferences();
+  // Keep the episode mounted across the accepted-input → next-interrupt gap.
+  // Its stale buttons remain disabled until the server supplies the next turn.
+  const [lastInvestigation, setLastInvestigation] = useState<AwaitingInput | null>(null);
+  if (awaiting?.kind === "investigation" && awaiting !== lastInvestigation) setLastInvestigation(awaiting);
+  const [text, setText] = useState("");
+  const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
+  // Lock against a logical turn key, not the parsed object's identity. An SSE
+  // reconnect can deliver the same pending prompt as a fresh object; comparing
+  // references treated that duplicate as a new turn and re-enabled voting.
+  const [lockedPromptKey, setLockedPromptKey] = useState<string | null>(null);
+  const locked = promptKey !== null && lockedPromptKey === promptKey;
+  const validSelectedTarget = awaiting?.options.includes(selectedTarget ?? "")
+    ? selectedTarget
+    : null;
+
+  const acceptsSpeech = awaiting?.kind === "statement" || awaiting?.kind === "werewolf_negotiation";
+  const microphone = access && acceptsSpeech ? <MicrophoneInput key={promptKey} sessionId={sessionId} access={access} language={language} disabled={submitting||locked||paused} onText={value=>setText(awaiting?.kind === "werewolf_negotiation" ? value.slice(0,320) : value)} onRecording={onRecording} /> : null;
+
+  if (paused) {
+    return (
+      <>
+        <div className="controls-hint">⏸ Game paused — the orchestrator has suspended between turns.</div>
+        <button className="btn" onClick={onContinue}>
+          {t("Continue")}
+        </button>
+      </>
+    );
+  }
+
+  const investigation = awaiting?.kind === "investigation" ? awaiting : !awaiting ? lastInvestigation : null;
+  if (investigation?.investigation) {
+    return <MissingVillagerInvestigation awaiting={investigation} submitting={submitting || !awaiting} onSubmit={onSubmit} />;
+  }
+  if (!awaiting) return <div className="controls-hint">{t("The village is deciding what happens next...")}</div>;
+
+  if (awaiting.kind === "statement") {
+    return (
+      <>
+        <div className="controls-hint">{t(awaiting.prompt)}</div>
+        {microphone}
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={t("What do you want to say to the village?")}
+          disabled={submitting || locked}
+        />
+        <button
+          className="btn"
+          disabled={submitting || locked}
+          onClick={async () => {
+            setLockedPromptKey(promptKey);
+            const accepted = await onSubmit({ text: text.trim() || "(says nothing)" });
+            if (accepted) setText("");
+            else setLockedPromptKey(null);
+          }}
+        >
+          {t("Speak")}
+        </button>
+      </>
+    );
+  }
+
+  if (awaiting.kind === "werewolf_negotiation") {
+    return (
+      <div className="wolf-council-control">
+        <div className="wolf-council-eyebrow">{t("PRIVATE WEREWOLF COUNCIL")}</div>
+        <div className="controls-hint">{t(awaiting.prompt)}</div>
+        {microphone}
+        <textarea
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          placeholder={t("Persuade your teammate, explain the threat, or coordinate tomorrow’s deception...")}
+          maxLength={320}
+          disabled={submitting || locked}
+        />
+        <div className="wolf-council-budget">Private message · {text.length}/320 characters</div>
+        <div className="vote-grid" aria-label="Proposed werewolf target">
+          {awaiting.options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={`vote-btn${validSelectedTarget === option ? " is-selected" : ""}`}
+              aria-pressed={validSelectedTarget === option}
+              disabled={submitting || locked}
+              onClick={() => setSelectedTarget(option)}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+        <div className="wolf-council-actions">
+          <button
+            className="btn btn-secondary"
+            disabled={submitting || locked}
+            onClick={async () => {
+              setLockedPromptKey(promptKey);
+              const accepted = await onSubmit({ skip: true });
+              if (accepted) {
+                setText("");
+                setSelectedTarget(null);
+              } else {
+                setLockedPromptKey(null);
+              }
+            }}
+          >
+            {t("Pass this council turn")}
+          </button>
+          <button
+            className="btn wolf-council-submit"
+            disabled={submitting || locked || !validSelectedTarget || !text.trim()}
+            onClick={async () => {
+              if (!validSelectedTarget) return;
+              setLockedPromptKey(promptKey);
+              const accepted = await onSubmit({ target: validSelectedTarget, text: text.trim() });
+              if (accepted) {
+                setText("");
+                setSelectedTarget(null);
+              } else {
+                setLockedPromptKey(null);
+              }
+            }}
+          >
+            {t("Send private plan")}
+          </button>
+        </div>
+        <small className="wolf-council-pass-note">Passing keeps your earlier target, if any, and lets the next werewolf act.</small>
+      </div>
+    );
+  }
+
+  // "vote" and "night_action" both resolve to picking a name from options.
+  return (
+    <>
+      <div className="controls-hint">{t(awaiting.prompt)}</div>
+      <div className="vote-grid">
+        {awaiting.options.map((option) => (
+          <button
+            key={option}
+            className="vote-btn"
+            disabled={submitting || locked}
+            onClick={async () => {
+              setLockedPromptKey(promptKey);
+              const accepted = await onSubmit({ target: option });
+              if (!accepted) setLockedPromptKey(null);
+            }}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}

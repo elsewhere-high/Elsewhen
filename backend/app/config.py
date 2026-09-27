@@ -1,0 +1,51 @@
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    host: str = "127.0.0.1"
+    port: int = 8317
+    database_url: str = "postgresql://elsewhen:elsewhen@127.0.0.1:55437/elsewhen?sslmode=disable"
+    # Only the local frontend origins are trusted by default.
+    cors_origins: list[str] = ["http://localhost:4317", "http://127.0.0.1:4317"]
+
+    anthropic_api_key: str | None = None
+    openai_api_key: str | None = None
+    # Optional lifelike council narration. The browser always retains a
+    # no-cost device-voice fallback when this key/model is unavailable.
+    openai_transcribe_model: str = "gpt-4o-transcribe"
+    character_image_model: str = "gpt-image-2.5-sunburst"
+    openai_tts_model: str = "gpt-4o-mini-tts"
+    # The read-only player guide always uses OpenAI independently of the
+    # models seated at the game table. Keep it small and inexpensive by
+    # default; operators can override it without changing application code.
+    game_guide_model: str = "gpt-5.4-nano"
+    google_api_key: str | None = None
+    ollama_base_url: str = "http://localhost:11434"
+    # Ollama Cloud (ollama.com's hosted models, e.g. "gpt-oss:120b") --
+    # distinct from a local Ollama install. Unlike the other providers, the
+    # `ollama` python package doesn't read this from a bare os.getenv() at
+    # request time in a way this app can rely on (see adapters.py's
+    # ollama_cloud branch for why it's passed explicitly instead).
+    ollama_api_key: str | None = None
+    ollama_cloud_url: str = "https://ollama.com"
+
+    # Operator-only game archive. This is deliberately separate from a room
+    # host token: a host can manage one game, while this secret can review the
+    # aggregate history of a public deployment.
+    game_history_access_key: str | None = None
+
+    # Optional, privacy-conscious country enrichment. When set, the backend
+    # substitutes the visitor address into `{ip}` and expects a response with
+    # a two-letter `country_code` field (for example ipwho.is). The address is
+    # never written to our database; only the returned country code is kept.
+    # Leave this unset to disable third-party country lookups entirely.
+    visitor_country_lookup_url: str | None = None
+
+    @property
+    def mcp_url(self) -> str:
+        return f"http://{self.host}:{self.port}/mcp"
+
+
+settings = Settings()

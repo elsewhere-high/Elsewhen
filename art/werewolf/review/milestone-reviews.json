@@ -1,0 +1,11 @@
+{
+  "schema": "game-room.milestone-reviews.v1",
+  "roomId": "watchman-blender",
+  "form": {
+    "status": "pending",
+    "approvedBy": "",
+    "approvedAt": "",
+    "evidence": [],
+    "notes": "Record a new form review before re-exporting the editable creature source."
+  }
+}
