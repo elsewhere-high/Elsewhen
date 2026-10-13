@@ -41,3 +41,6 @@ unreal/**/*.xcodeproj/
 # Generated authoring reviews
 art/**/review/renders/
 *.blend1
+# Competition deliverables and rendering intermediates
+output/
+tmp/

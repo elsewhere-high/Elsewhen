@@ -44,3 +44,9 @@ pnpm --dir frontend build
 Mock 测试覆盖完整图和工具路径，但不能证明真实模型账户、语音设备、付费图片服务或原生图形引擎可用。这些集成需要各自的运行条件。
 
 后端目前是源码运行的应用，`tool.uv.package = false`；没有 Python wheel 发布或安装产物流程。前端生产产物由 `pnpm build` 生成。
+
+## 参赛演示与材料
+
+[OS2026 材料说明](competition/os2026.md) 记录本次提交的功能范围、复现流程与实测结果。PDF、MP4 等最终附件通过 GitHub Release 分发，`output/` 与 `tmp/` 中的生成文件不进入 Git。用于说明的真实界面截图保存在 `docs/competition/assets/`。
+
+Unreal 可选客户端的 Android 开发文件服务默认关闭，模板令牌已清空；这不影响浏览器主应用和 macOS 原生客户端的常规运行入口。

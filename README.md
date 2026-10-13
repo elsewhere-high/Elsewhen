@@ -6,6 +6,17 @@ Elsewhen 是一个可参与、可观察、可回溯的多智能体游戏。你�
 
 默认使用离线 Mock 智能体，无需 API 密钥。真实模型在开局前经过可用性与工具调用检查。
 
+## 2026 上海开源软件应用创新大赛
+
+参赛方向为**开源 AI 工具赛道**：可参与、可观测、可回溯的多智能体实验工具。
+
+- [作品介绍与验证说明](docs/competition/os2026.md)
+- [作品介绍 PDF](https://github.com/elsewhere-high/Elsewhen/releases/download/os2026-submission-v1/Elsewhen-OS2026-Project.pdf)
+- [演示视频 MP4](https://github.com/elsewhere-high/Elsewhen/releases/download/os2026-submission-v1/Elsewhen-OS2026-Demo.mp4)
+- [完整材料 Release](https://github.com/elsewhere-high/Elsewhen/releases/tag/os2026-submission-v1)
+
+视频使用本地生产模式与离线 `mock-v1`，展示配置、议会操作、执行图、状态检查、复盘分支和批量实验。真实模型性能不由 Mock 演示结果推断。
+
 ## 本地启动
 
 需要 Conda、Node.js 22.18+、pnpm 12 和运行中的 Docker Desktop。Python 统一运行于 `elsewhen` Conda 环境；Docker 只运行 PostgreSQL。
@@ -83,6 +94,8 @@ Unreal 客户端需要额外安装 Unreal Engine 5.8；森林中的真实模型�
 ## 许可
 
 Copyright (C) 2026 Ustinian5。项目采用 [AGPL-3.0-only](LICENSE)。第三方软件、人物扫描、环境资源与音效的声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+参与维护请参阅 [贡献指南](CONTRIBUTING.md)。
 
 ## 界面预览
 
